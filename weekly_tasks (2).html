@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>週次タスク管理</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+  background: #f0ede8;
+  color: #1c1a17;
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+.app {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 4rem;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.week-nav { display: flex; align-items: center; gap: 12px; }
+
+.week-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1c1a17;
+  letter-spacing: -0.3px;
+}
+
+.btn {
+  background: #fff;
+  border: 1px solid #d8d4cc;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 13px;
+  color: #1c1a17;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { background: #f5f2ed; border-color: #b8b4ac; }
+.btn:active { transform: scale(0.98); }
+.btn-nav { padding: 7px 13px; font-size: 16px; }
+.btn-rollover { background: #fff8ec; border-color: #e8c870; color: #7a5500; }
+.btn-rollover:hover { background: #fff0cc; }
+
+.save-status {
+  font-size: 12px;
+  color: #999;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  transition: all 0.3s;
+  min-width: 80px;
+  text-align: center;
+}
+.save-status.saving { color: #e8a020; border-color: #f0d090; background: #fffbf0; }
+.save-status.saved  { color: #3a8a50; border-color: #a0d8b0; background: #f0faf3; }
+.save-status.error  { color: #c03030; border-color: #f0a0a0; background: #fff5f5; }
+
+.stats { display: flex; gap: 8px; align-items: center; }
+.stat {
+  background: #fff;
+  border: 1px solid #d8d4cc;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: #666;
+}
+.stat b { color: #1c1a17; font-weight: 600; }
+
+.top-areas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 1.5rem;
+}
+
+.area-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.area-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.badge-info { background: #dbeeff; color: #185fa5; }
+.badge-warn { background: #faeeda; color: #7a5500; }
+
+.area-box {
+  background: #fff;
+  border: 1px solid #d8d4cc;
+  border-radius: 12px;
+  padding: 14px 16px;
+  min-height: 72px;
+}
+.area-box-sugu { border-color: #90c8f0; background: #f0f8ff; }
+
+.board-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.day-col {
+  background: #fff;
+  border: 1px solid #d8d4cc;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.day-header {
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #888;
+  border-bottom: 1px solid #ede9e2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.day-header.today { color: #185fa5; background: #f0f8ff; border-bottom-color: #c0dff8; }
+.day-date { font-size: 11px; font-weight: 400; color: #bbb; }
+.day-header.today .day-date { color: #90c0e8; }
+
+.cat-block { padding: 8px 12px; border-bottom: 1px solid #f0ede8; }
+.cat-block:last-child { border-bottom: none; }
+.cat-label { font-size: 11px; font-weight: 600; color: #aaa; margin-bottom: 4px; letter-spacing: 0.2px; }
+
+.task-row { display: flex; align-items: flex-start; gap: 6px; padding: 2px 0; }
+.task-row input[type=checkbox] {
+  margin-top: 3px; flex-shrink: 0; cursor: pointer;
+  accent-color: #185fa5; width: 13px; height: 13px;
+}
+.task-text { font-size: 13px; color: #1c1a17; line-height: 1.5; flex: 1; min-width: 0; word-break: break-all; }
+.task-text.done { text-decoration: line-through; color: #bbb; }
+.task-text.carried { color: #c08020; }
+.task-del {
+  background: none; border: none; cursor: pointer; color: #ccc;
+  font-size: 15px; padding: 0 2px; line-height: 1; flex-shrink: 0;
+  opacity: 0; transition: opacity 0.1s;
+}
+.task-row:hover .task-del { opacity: 1; }
+
+.add-task { display: flex; gap: 4px; margin-top: 5px; }
+.add-task input {
+  flex: 1; border: 1px solid #e0dcd6; border-radius: 6px;
+  padding: 4px 8px; font-size: 12px; background: #faf8f5;
+  color: #1c1a17; font-family: inherit; min-width: 0; outline: none;
+  transition: border-color 0.15s;
+}
+.add-task input:focus { border-color: #90c0f0; background: #fff; }
+.add-task input::placeholder { color: #ccc; }
+.add-task button {
+  border: 1px solid #e0dcd6; border-radius: 6px; background: #fff;
+  color: #aaa; cursor: pointer; padding: 4px 8px; font-size: 15px;
+  line-height: 1; transition: all 0.1s;
+}
+.add-task button:hover { background: #f0ede8; color: #666; }
+
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4); z-index: 200;
+  align-items: center; justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: #fff; border-radius: 14px; padding: 28px;
+  width: 380px; max-width: 90vw;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.15);
+}
+.modal h3 { font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+.modal p { font-size: 13px; color: #666; line-height: 1.7; margin-bottom: 20px; }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+.error-banner {
+  display: none; background: #fff5f5; border: 1px solid #f0c0c0;
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 1rem;
+  font-size: 13px; color: #c03030;
+}
+.error-banner.show { display: block; }
+
+.loading { text-align: center; padding: 2rem; color: #bbb; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top-bar">
+    <div class="week-nav">
+      <button class="btn btn-nav" id="prevBtn">&#8592;</button>
+      <span class="week-title" id="weekTitle">読み込み中...</span>
+      <button class="btn btn-nav" id="nextBtn">&#8594;</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="stats" id="statsBar"></div>
+      <span class="save-status" id="saveStatus"></span>
+      <button class="btn btn-rollover" id="rolloverBtn">翌週に積み残しを繰越 →</button>
+    </div>
+  </div>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="top-areas">
+    <div>
+      <div class="area-label">すぐやる <span class="area-badge badge-info" id="suguBadge" style="display:none"></span></div>
+      <div class="area-box area-box-sugu" id="suguArea"><div class="loading">読み込み中...</div></div>
+    </div>
+    <div>
+      <div class="area-label">一時置き <span class="area-badge badge-warn" id="parkingBadge" style="display:none"></span></div>
+      <div class="area-box" id="parkingArea"><div class="loading">読み込み中...</div></div>
+    </div>
+  </div>
+
+  <div class="board-label">週間タスクボード</div>
+  <div class="day-grid" id="dayGrid">
+    <div class="loading" style="grid-column:1/-1">読み込み中...</div>
+  </div>
+</div>
+
+<div class="modal-bg" id="rolloverModal">
+  <div class="modal">
+    <h3>翌週へ積み残しを繰越</h3>
+    <p id="rolloverMsg"></p>
+    <div class="modal-btns">
+      <button class="btn" id="rolloverCancel">キャンセル</button>
+      <button class="btn btn-rollover" id="rolloverConfirm">繰越する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwEVRmZtdJyIAPfTVJEv5x_ArxYVqlPkdsBr0YH5CBevQ61W_oXvIxGRquO1Imd17pi/exec';
+
+const DAYS = ['Mon','Tue','Wed','Thu','Fri'];
+const CATS = [
+  {key:'plan',    label:'起案'},
+  {key:'c_think', label:'考える連絡'},
+  {key:'c_biz',   label:'連絡・業務'},
+  {key:'w_biz',   label:'作業・業務'},
+  {key:'c_other', label:'連絡・業務外'},
+  {key:'w_other', label:'作業・業務外'},
+];
+
+function getWeekKey(offset) {
+  const now = new Date(), day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  return mon.toISOString().slice(0, 10);
+}
+function weekLabel(wkey) {
+  const d = new Date(wkey), end = new Date(d);
+  end.setDate(d.getDate() + 4);
+  const fmt = dt => `${dt.getMonth()+1}/${dt.getDate()}`;
+  return `${d.getFullYear()}年 ${fmt(d)}〜${fmt(end)}の週`;
+}
+function getDayDate(wkey, di) {
+  const d = new Date(wkey); d.setDate(d.getDate() + di);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function emptyWeek() {
+  const w = { parking: [], sugu: [], days: {} };
+  DAYS.forEach(d => { w.days[d] = {}; CATS.forEach(c => { w.days[d][c.key] = []; }); });
+  return w;
+}
+function ensureShape(w) {
+  if (!w.sugu)    w.sugu    = [];
+  if (!w.parking) w.parking = [];
+  if (!w.days)    w.days    = {};
+  DAYS.forEach(d => {
+    if (!w.days[d]) w.days[d] = {};
+    CATS.forEach(c => { if (!w.days[d][c.key]) w.days[d][c.key] = []; });
+  });
+}
+
+// GETのみで読み書き（CORS回避）
+async function gasLoad(wkey) {
+  const url = `${GAS_URL}?action=load&wkey=${encodeURIComponent(wkey)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`通信エラー: ${res.status}`);
+  const text = await res.text();
+  if (!text || text === '{}') return emptyWeek();
+  const parsed = JSON.parse(text);
+  ensureShape(parsed);
+  return parsed;
+}
+
+async function gasSave(wkey, data) {
+  const json = JSON.stringify(data);
+  const url = `${GAS_URL}?action=save&wkey=${encodeURIComponent(wkey)}&data=${encodeURIComponent(json)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`保存エラー: ${res.status}`);
+  const result = await res.json();
+  if (result.status === 'error') throw new Error(result.message);
+}
+
+let currentOffset = 0;
+let allData = {};
+let saveTimer = null;
+
+function currentWkey() { return getWeekKey(currentOffset); }
+
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = msg; el.classList.add('show');
+}
+function hideError() { document.getElementById('errorBanner').classList.remove('show'); }
+
+function setSaveStatus(state, msg) {
+  const el = document.getElementById('saveStatus');
+  el.className = 'save-status ' + state;
+  el.textContent = msg;
+}
+
+async function loadWeek(wkey) {
+  if (allData[wkey]) return;
+  try {
+    hideError();
+    allData[wkey] = await gasLoad(wkey);
+  } catch(e) {
+    allData[wkey] = emptyWeek();
+    showError('読み込みに失敗しました: ' + e.message);
+  }
+}
+
+function scheduleSave(wkey) {
+  setSaveStatus('saving', '保存中...');
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await gasSave(wkey, allData[wkey]);
+      setSaveStatus('saved', '保存済み ✓');
+      setTimeout(() => setSaveStatus('', ''), 2000);
+    } catch(e) {
+      setSaveStatus('error', '保存失敗 ✗');
+      showError('保存に失敗しました: ' + e.message);
+    }
+  }, 800);
+}
+
+function renderTaskList(container, tasks, wkey, onChange, placeholder) {
+  container.innerHTML = '';
+  tasks.forEach((t, i) => {
+    const row = document.createElement('div'); row.className = 'task-row';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!t.done;
+    cb.onchange = () => { tasks[i].done = cb.checked; scheduleSave(wkey); onChange(); };
+    const span = document.createElement('span');
+    span.className = 'task-text' + (t.done ? ' done' : '') + (t.carried ? ' carried' : '');
+    span.textContent = t.text + (t.carried ? ' ↩' : '');
+    const del = document.createElement('button'); del.className = 'task-del'; del.textContent = '×';
+    del.onclick = () => { tasks.splice(i, 1); scheduleSave(wkey); onChange(); };
+    row.append(cb, span, del);
+    container.appendChild(row);
+  });
+  const addRow = document.createElement('div'); addRow.className = 'add-task';
+  const inp = document.createElement('input'); inp.placeholder = placeholder || '追加...';
+  const addBtn = document.createElement('button'); addBtn.textContent = '+';
+  const doAdd = () => {
+    const v = inp.value.trim(); if (!v) return;
+    tasks.push({ text: v, done: false }); inp.value = '';
+    scheduleSave(wkey); onChange();
+  };
+  addBtn.onclick = doAdd;
+  inp.onkeydown = e => { if (e.key === 'Enter') doAdd(); };
+  addRow.append(inp, addBtn);
+  container.appendChild(addRow);
+}
+
+function renderStats(week) {
+  let total = 0, done = 0;
+  DAYS.forEach(d => CATS.forEach(c => {
+    (week.days[d][c.key]||[]).forEach(t => { total++; if (t.done) done++; });
+  }));
+  [...(week.parking||[]), ...(week.sugu||[])].forEach(t => { total++; if (t.done) done++; });
+  document.getElementById('statsBar').innerHTML =
+    `<div class="stat"><b>${done}</b> / ${total} 完了</div>` +
+    (total > 0 ? `<div class="stat"><b>${Math.round(done/total*100)}%</b></div>` : '');
+}
+
+function renderSugu(week, wkey) {
+  const badge = document.getElementById('suguBadge');
+  const undone = (week.sugu||[]).filter(t => !t.done).length;
+  badge.style.display = undone ? '' : 'none'; badge.textContent = undone + '件';
+  renderTaskList(document.getElementById('suguArea'), week.sugu, wkey,
+    () => { renderSugu(week, wkey); renderStats(week); }, 'すぐやることを追加...');
+}
+
+function renderParking(week, wkey) {
+  const badge = document.getElementById('parkingBadge');
+  const undone = (week.parking||[]).filter(t => !t.done).length;
+  badge.style.display = undone ? '' : 'none'; badge.textContent = undone + '件未完了';
+  renderTaskList(document.getElementById('parkingArea'), week.parking, wkey,
+    () => { renderParking(week, wkey); renderStats(week); }, 'タスクを追加...');
+}
+
+function renderDay(dayEl, dayTasks, dayKey, week, wkey) {
+  dayEl.innerHTML = '';
+  CATS.forEach(cat => {
+    const block = document.createElement('div'); block.className = 'cat-block';
+    const label = document.createElement('div'); label.className = 'cat-label'; label.textContent = cat.label;
+    block.appendChild(label);
+    const inner = document.createElement('div');
+    renderTaskList(inner, dayTasks[cat.key]||[], wkey,
+      () => { renderDay(dayEl, dayTasks, dayKey, week, wkey); renderStats(week); }, '追加...');
+    block.appendChild(inner);
+    dayEl.appendChild(block);
+  });
+}
+
+async function renderBoard() {
+  const wkey = currentWkey();
+  document.getElementById('weekTitle').textContent = weekLabel(wkey);
+  document.getElementById('suguArea').innerHTML = '<div class="loading">読み込み中...</div>';
+  document.getElementById('parkingArea').innerHTML = '<div class="loading">読み込み中...</div>';
+  document.getElementById('dayGrid').innerHTML = '<div class="loading" style="grid-column:1/-1">読み込み中...</div>';
+
+  await loadWeek(wkey);
+  const week = allData[wkey];
+  const todayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
+
+  renderSugu(week, wkey);
+  renderParking(week, wkey);
+  renderStats(week);
+
+  const grid = document.getElementById('dayGrid'); grid.innerHTML = '';
+  DAYS.forEach((dayKey, di) => {
+    const col = document.createElement('div'); col.className = 'day-col';
+    const hdr = document.createElement('div');
+    hdr.className = 'day-header' + (dayKey === todayName ? ' today' : '');
+    hdr.innerHTML = `<span>${dayKey}</span><span class="day-date">${getDayDate(wkey, di)}</span>`;
+    col.appendChild(hdr);
+    const body = document.createElement('div');
+    renderDay(body, week.days[dayKey], dayKey, week, wkey);
+    col.appendChild(body);
+    grid.appendChild(col);
+  });
+}
+
+function countUndone(week) {
+  let n = 0;
+  DAYS.forEach(d => CATS.forEach(c => { (week.days[d][c.key]||[]).forEach(t => { if (!t.done) n++; }); }));
+  [...(week.parking||[]), ...(week.sugu||[])].forEach(t => { if (!t.done) n++; });
+  return n;
+}
+
+document.getElementById('prevBtn').onclick = () => { currentOffset--; renderBoard(); };
+document.getElementById('nextBtn').onclick = () => { currentOffset++; renderBoard(); };
+
+document.getElementById('rolloverBtn').onclick = () => {
+  const week = allData[currentWkey()]; if (!week) return;
+  const n = countUndone(week);
+  if (n === 0) { alert('未完了タスクはありません！'); return; }
+  document.getElementById('rolloverMsg').textContent =
+    `未完了タスクが ${n} 件あります。翌週の同エリア・同カテゴリへ繰り越しますか？（曜日別タスクは月曜にまとめて移動します）`;
+  document.getElementById('rolloverModal').classList.add('open');
+};
+document.getElementById('rolloverCancel').onclick = () => document.getElementById('rolloverModal').classList.remove('open');
+document.getElementById('rolloverConfirm').onclick = async () => {
+  document.getElementById('rolloverModal').classList.remove('open');
+  const wkey = currentWkey();
+  const nextWkey = getWeekKey(currentOffset + 1);
+  const week = allData[wkey];
+  await loadWeek(nextWkey);
+  const next = allData[nextWkey];
+  (week.sugu||[]).filter(t => !t.done).forEach(t => next.sugu.push({text:t.text, done:false, carried:true}));
+  (week.parking||[]).filter(t => !t.done).forEach(t => next.parking.push({text:t.text, done:false, carried:true}));
+  DAYS.forEach(d => CATS.forEach(c => {
+    (week.days[d][c.key]||[]).filter(t => !t.done).forEach(t =>
+      next.days['Mon'][c.key].push({text:t.text, done:false, carried:true}));
+  }));
+  scheduleSave(nextWkey);
+  currentOffset++;
+  renderBoard();
+};
+
+renderBoard();
+</script>
+</body>
+</html>
