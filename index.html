@@ -197,7 +197,7 @@ function jsonp(url) {
 }
 
 async function gasLoad(wkey) {
-  const url = `${GAS_URL}?action=load&wkey=${encodeURIComponent(wkey)}`;
+const url = `${GAS_URL}?action=load&wkey=${encodeURIComponent(wkey)}&t=${Date.now()}`;
   const result = await jsonp(url);
   if (!result || Object.keys(result).length === 0) return emptyWeek();
   ensureShape(result);
